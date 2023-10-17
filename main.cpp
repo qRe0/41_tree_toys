@@ -5,31 +5,33 @@
 
 using namespace std;
 
-ifstream input("input.txt");   // Открываем файл для чтения входных данных
-ofstream output("output.txt"); // Открываем файл для записи выходных данных
+ifstream input("input.txt");
+ofstream output("output.txt");
 
+// Структура, представляющая каждый набор игрушек
 struct ToySet {
-    int d;       // Количество игрушек в наборе
-    int t;       // Время изготовления набора
-    int index;   // Индекс набора (порядковый номер)
+    int d;      // Число игрушек в наборе
+    int t;      // Время изготовления набора
+    int index;  // Индекс набора (для отслеживания выбранных наборов)
 };
-
-// Функция сравнения для сортировки наборов игрушек
-int compare(const void* a, const void* b) {
-    return (*(int*)a - *(int*)b);
-}
 
 int main() {
     int s, n, m;
-    input >> s >> n >> m; // Считываем количество наборов, размеры коробки
+    input >> s >> n >> m;
+    int size = n * m; // Максимальный доступный размер коробки
 
-    vector<ToySet> sets(s); // Создаем вектор, чтобы хранить информацию о наборах игрушек
+    // Создаем вектор, чтобы хранить информацию о каждом наборе игрушек
+    vector<ToySet> sets(s);
+
+    // Считываем данные о наборах из входного файла
     for (int i = 0; i < s; ++i) {
-        input >> sets[i].d >> sets[i].t; // Считываем количество игрушек и время изготовления наборов
-        sets[i].index = i + 1; // Присваиваем индекс набору (начиная с 1)
+        input >> sets[i].d >> sets[i].t;
+        sets[i].index = i + 1; // Индекс начинается с 1 для удобства вывода результата
     }
 
-    // Сортируем наборы игрушек в порядке убывания времени изготовления и убывания количества игрушек
+    input.close();
+
+    // Сортируем наборы по времени изготовления (для случаев, когда в наборах разное число игрушек, но одно время)
     sort(sets.begin(), sets.end(), [](const ToySet& a, const ToySet& b) {
         if (a.t == b.t) {
             return a.d > b.d;
@@ -37,45 +39,38 @@ int main() {
         return a.t > b.t;
     });
 
-    // Инициализируем двумерные массивы для динамического программирования
-    vector<vector<long long>> dp(s + 1, vector<long long>(n * m + 1, 0));
-    vector<vector<int>> chosen(s + 1, vector<int>(n * m + 1, 0));
+    // Создаем двумерный массив dp для хранения результатов
+    vector<vector<long long>> dp(s + 1, vector<long long>(size + 1, 0));
 
-    // Заполняем двумерный массив dp
+    // Заполняем dp с использованием динамического программирования
     for (int i = 1; i <= s; ++i) {
-        for (int j = 1; j <= n * m; ++j) {
+        for (int j = 1; j <= size; ++j) {
             if (sets[i - 1].d <= j) {
+                // Выбираем максимум между включением текущего набора и исключением его
                 dp[i][j] = max(dp[i][j], dp[i - 1][j - sets[i - 1].d] + sets[i - 1].t);
-                if (dp[i][j] > dp[i - 1][j]) {
-                    chosen[i][j] = 1;
-                }
             }
             dp[i][j] = max(dp[i][j], dp[i - 1][j]);
         }
     }
 
-    int k = n * m;
-    vector<int> result;
-    for (int i = s; i >= 1; --i) {
-        if (chosen[i][k] == 1) {
-            result.push_back(sets[i - 1].index);
-            k -= sets[i - 1].d;
+    // Создаем вектор chosen_sets для хранения индексов выбранных наборов
+    vector<int> chosen_sets;
+
+    // Восстанавливаем выбранные наборы из dp
+    for (int i = s; i > 0; --i) {
+        if (dp[i][size] > dp[i - 1][size]) {
+            chosen_sets.push_back(sets[i - 1].index);
+            size -= sets[i - 1].d;
         }
     }
 
-    // Сортируем номера выбранных наборов для вывода в порядке возрастания
-    qsort(result.data(), result.size(), sizeof(int), compare);
+    output << chosen_sets.size() << endl;
 
-    // Выводим количество выбранных наборов и их номера в файл output.txt
-    output << result.size() << endl;
-    for (int box : result) {
-        output << box << " ";
+    for (int i = 0; i < chosen_sets.size(); i++) {
+        output << chosen_sets[i] << " ";
     }
 
-    cout << "All done!\n";
-
-    input.close();  // Закрываем файл ввода
-    output.close(); // Закрываем файл вывода
+    output.close();
 
     return 0;
 }
